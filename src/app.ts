@@ -1,3 +1,36 @@
+//project state management class
+
+class ProjectState{
+  private listeners:any[] = [];
+  private projects:any[] = [];
+  private static instance:ProjectState;
+  private constructor(){
+
+  }
+  static getInstance(){
+    if(this.instance){
+      return this.instance;
+    }
+    this.instance = new ProjectState();
+    return this.instance;
+  }
+
+  addListener(listenerfn:Function){
+    this.listeners.push(listenerfn)
+  }
+
+  addProject(title:string,description:string,numOfPeople:number){
+    const newProject = {
+      id:Math.random().toString(),
+      title,
+      description,
+      people:numOfPeople
+    }
+    this.projects.push(newProject);
+  }
+}
+
+const projectState = ProjectState.getInstance();
 
 interface Validatable{
     value:string | number;
@@ -22,7 +55,7 @@ function Validate(validatableInput:Validatable){
     if (validatableInput.min != null && typeof validatableInput.value ==='number'){
         isValid = isValid && validatableInput.value > validatableInput.min;
     }
-    if (validatableInput.max != null && typeof validatableInput.value ==='number'){
+    if (validatableInput.max != null && typeof validatableInput.value === 'number'){
         isValid = isValid && validatableInput.value < validatableInput.max;
     }
     return isValid;
@@ -39,6 +72,40 @@ function AutoBind(target: any, name: string, descriptor: PropertyDescriptor) {
   };
   return adjDescriptor;
 }
+
+class ProjectList{
+  templateElement: HTMLTemplateElement;
+  hostElement: HTMLDivElement;
+  element: HTMLElement;
+
+  constructor(private type:'active' | 'finished'){
+    this.templateElement = <HTMLTemplateElement>(
+      document.getElementById("project-list")!
+    );
+    this.hostElement = <HTMLDivElement>document.getElementById("app");
+
+    const importedNode = document.importNode(
+      this.templateElement.content,
+      true
+    );
+    this.element = importedNode.firstElementChild as HTMLElement;
+    this.element.id = `${this.type}-projects`;
+    this.attach();
+    this.renderContent()
+  }
+private renderContent(){
+  const listId=`${this.type}-projects-list`;
+  this.element.querySelector('ul')!.id = listId;
+  this.element.querySelector('h2')!.textContent =
+    this.type.toUpperCase() + ' PROJECTS';
+  
+}
+private attach(){
+  this.hostElement.insertAdjacentElement("beforeend", this.element);
+}
+}
+
+
 
 class ProjectInput {
   templateElement: HTMLTemplateElement;
@@ -79,13 +146,23 @@ class ProjectInput {
 
     const titleValidatable: Validatable = {
         value:enteredTitle,
-        
+        required:true,
+        minLength:5
     }
-
+    const descriptionValidatable: Validatable = {
+      value:enteredDescription,
+      required:true,
+    }
+    const peopleValidatable: Validatable = {
+      value:enteredPeople,
+      required:true,
+      min:0,
+      max:2
+    }
     if (
-      enteredTitle.trim().length === 0 ||
-      enteredDescription.trim().length === 0 ||
-      enteredPeople.trim().length === 0
+      !Validate(titleValidatable) ||
+      !Validate(descriptionValidatable) ||
+      !Validate(peopleValidatable)
     ) {
       alert("Invalid input");
       return;
@@ -103,7 +180,8 @@ class ProjectInput {
     e.preventDefault();
     const userInput = this.gatherUserInput();
     if(Array.isArray(userInput)){
-        const [title,description,people] = userInput
+        const [title,description,people] = userInput;
+        projectState.addProject(title,description,people);
         console.log(title,description,people); 
     }
   }
@@ -117,3 +195,5 @@ class ProjectInput {
 }
 
 const projectInput = new ProjectInput();
+const activeProjectsList = new ProjectList('active');
+const finishedProjectsList = new ProjectList('finished');
